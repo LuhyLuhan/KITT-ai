@@ -59,4 +59,43 @@ app.post('/api/chat', async (req, res) => {
     const { message } = req.body
     const knowledge = readKnowledge()
 
-    const contex
+    const context = knowledge
+      .map((k) => `Title: ${k.title}\nContent: ${k.content}`)
+      .join('\n\n---\n\n')
+
+    const prompt = `You are KITT, a helpful AI assistant. Use the saved knowledge when relevant.
+
+Saved knowledge:
+${context || 'No saved knowledge yet.'}
+
+User message:
+${message}
+
+Answer clearly and helpfully.`
+
+    const response = await fetch('http://localhost:11434/api/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama3.2',
+        prompt,
+        stream: false,
+      }),
+    })
+
+    const data = await response.json()
+    res.json({ reply: data.response || 'No response from Ollama.' })
+  } catch (err) {
+    console.error('Chat error:', err)
+    res.status(500).json({
+      error: 'Failed to chat with Ollama',
+      details: err.message,
+    })
+  }
+})
+
+app.listen(PORT, () => {
+  console.log(`Local API running at http://localhost:${PORT}`)
+})
